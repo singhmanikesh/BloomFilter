@@ -1,14 +1,27 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"hash"
+
+	"github.com/spaolacci/murmur3"
+)
+
+var hasher hash.Hash32 = murmur3.New32WithSeed(32)
+
+func murmurhash(key string, size int) int {
+	hasher.Write(data)
+	var result = hasher.Sum32()
+
+}
 
 type BloomFilter struct {
-	filter []byte
+	filter []bool
 }
 
 func NewBloomFilter(size int) *BloomFilter {
 	return &BloomFilter{
-		make([]byte, size),
+		make([]bool, size),
 	}
 }
 
