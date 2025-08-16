@@ -10,19 +10,25 @@ import (
 )
 
 // mHasher is a global MurmurHash3 hasher used for hashing keys
-var mHasher hash.Hash32
+var hashers [4]hash.Hash32
 
 // init initializes the global hasher with a time-based seed
 func init() {
-	mHasher = murmur3.New32WithSeed(uint32(10))
+	hashers[0] = murmur3.New32WithSeed(10)
+	hashers[1] = murmur3.New32WithSeed(20)
+	hashers[2] = murmur3.New32WithSeed(30)
+	hashers[3] = murmur3.New32WithSeed(40)
 }
 
 // murmurhash hashes the key and maps it to a valid index in the filter
-func murmurhash(key string, size int32) int32 {
-	mHasher.Write([]byte(key))               // Hash the key
-	result := mHasher.Sum32() % uint32(size) // Map hash to filter size
-	mHasher.Reset()                          // Reset hasher for next use
-	return int32(result)
+func murmurhashes(key string, size int32) [4]int32 {
+	var idxs [4]int32
+	for i, hasher := range hashers {
+		hasher.Write([]byte(key))
+		idxs[i] = int32(hasher.Sum32() % uint32(size))
+		hasher.Reset()
+	}
+	return idxs
 }
 
 // BloomFilter represents the Bloom filter data structure
@@ -41,9 +47,10 @@ func NewBloomFilter(size int32) *BloomFilter {
 
 // Add inserts a key into the Bloom filter
 func (b *BloomFilter) Add(key string) {
-	idx := murmurhash(key, b.size) // Get index for the key
-	b.filter[idx] = true           // Set the bit at that index
-	//fmt.Println("wrote", key, "at index", idx) // Print the index where the key was added
+	idxs := murmurhashes(key, b.size)
+	for _, idx := range idxs {
+		b.filter[idx] = true
+	}
 }
 
 func (b *BloomFilter) print() {
@@ -52,10 +59,14 @@ func (b *BloomFilter) print() {
 
 // Exists checks if a key might be in the Bloom filter
 // Returns true if the bit is set, false otherwise
-func (b *BloomFilter) Exists(key string) (string, int32, bool) {
-	idx := murmurhash(key, b.size) // Get index for the key
-	return key, idx, b.filter[idx]
-	// Return the bit value
+func (b *BloomFilter) Exists(key string) (string, [4]int32, bool) {
+	idxs := murmurhashes(key, b.size)
+	for _, idx := range idxs {
+		if !b.filter[idx] {
+			return key, idxs, false
+		}
+	}
+	return key, idxs, true
 }
 
 // main demonstrates usage of the Bloom filter
@@ -75,7 +86,7 @@ func main() {
 		dataset_notexists[u.String()] = false
 	}
 
-	for j := 100; j < 200; j += 100 {
+	for j := 100; j < 10000; j += 100 {
 
 		bloom := NewBloomFilter(int32(j)) // Create a Bloom filter of size j
 
