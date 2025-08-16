@@ -75,24 +75,27 @@ func main() {
 		dataset_notexists[u.String()] = false
 	}
 
-	bloom := NewBloomFilter(1000)
+	for j := 100; j < 200; j += 100 {
 
-	for key, _ := range dataset_exists {
-		bloom.Add(key)
+		bloom := NewBloomFilter(int32(j)) // Create a Bloom filter of size j
 
-	}
+		for key, _ := range dataset_exists {
+			bloom.Add(key)
 
-	falsePositive := 0
-	for _, key := range dataset {
-		_, _, exists := bloom.Exists(key)
-		if exists {
-			if _, ok := dataset_notexists[key]; ok {
-				falsePositive++
+		}
+
+		falsePositive := 0
+		for _, key := range dataset {
+			_, _, exists := bloom.Exists(key)
+			if exists {
+				if _, ok := dataset_notexists[key]; ok {
+					falsePositive++
+				}
 			}
 		}
-	}
-	fmt.Println(float64(falsePositive) / float64(len(dataset)))
+		fmt.Println(float64(falsePositive) / float64(len(dataset)))
 
+	}
 }
 
 // Create a Bloom filter of size 1000
